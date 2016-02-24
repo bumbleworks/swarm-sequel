@@ -1,7 +1,12 @@
 require "swarm/sequel/version"
+require "swarm/sequel/storage"
+
+Sequel.extension :migration
 
 module Swarm
   module Sequel
-    # Your code goes here...
+    def self.root
+      Pathname(File.expand_path "../../..", __FILE__)
+    end
   end
 end
