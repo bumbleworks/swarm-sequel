@@ -7,6 +7,11 @@ RSpec.describe Swarm::Sequel::Storage do
       expect_any_instance_of(described_class).to receive(:migrate!)
       subject
     end
+
+    it "skips running #migrate! if requested" do
+      expect_any_instance_of(described_class).to receive(:migrate!).never
+      described_class.new(sequel_db, skip_migrations: true)
+    end
   end
 
   describe "#migrate!" do
@@ -32,6 +37,12 @@ RSpec.describe Swarm::Sequel::Storage do
     end
   end
 
+  describe "#association_key_for_type" do
+    it "returns tokenized type with _id appended" do
+      expect(subject.association_key_for_type("PartyKnuckles")).to eq("party_knuckles_id")
+    end
+  end
+
   context "with real data" do
     before(:each) do
       Timecop.freeze
@@ -41,10 +52,10 @@ RSpec.describe Swarm::Sequel::Storage do
           :id => id, :type => "ProcessDefinition", :tree => "tree", :name => "foo", :version => "1.0.#{id}"
         )
         sequel_db[:swarm_processes].insert(
-          :id => id + 3, :type => "Process", :process_definition_id => "pid_#{id + 3}", :workitem => "work", :root_expression_id => "rid_#{id + 3}"
+          :id => id + 3, :type => "Process", :process_definition_id => "1", :workitem => "work", :root_expression_id => "rid_#{id + 3}"
         )
         sequel_db[:swarm_expressions].insert(
-          :id => id + 6, :type => "Expression", :parent_id => "pid_#{id + 6}", :position => id + 10, :workitem => "work", :process_id => "4567"
+          :id => id + 6, :type => "Expression", :parent_id => "pid_#{id + 6}", :position => id + 10, :workitem => "work", :process_id => id + 3
         )
         sequel_db[:swarm_expressions].insert(
           :id => id + 9, :type => "OtherExpression", :parent_id => "pid_#{id + 9}", :position => id + 10, :workitem => "work", :process_id => "4567"
@@ -58,6 +69,17 @@ RSpec.describe Swarm::Sequel::Storage do
     after(:each) do
       Timecop.return
       subject.migrate!(version: 0)
+    end
+
+    describe "#load_associations" do
+      it "returns all associated objects with given relationship" do
+        expect(subject.load_associations(
+          "processes",
+          owner: double(Swarm::ProcessDefinition, id: "1"),
+          type: "Swarm::Process",
+          foreign_key: :process_definition_id
+        ).all).to eq(sequel_db[:swarm_processes].all)
+      end
     end
 
     describe "#ids_for_type" do
