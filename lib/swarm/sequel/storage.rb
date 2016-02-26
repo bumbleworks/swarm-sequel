@@ -4,6 +4,7 @@ require "swarm"
 module Swarm
   module Sequel
     class Storage
+      TABLE_PREFIX = "swarm"
       TABLE_NAMES = {
         "ProcessDefinition" => "process_definitions",
         "Process" => "processes",
@@ -14,9 +15,8 @@ module Swarm
       attr_reader :sequel_db
       attr_accessor :trace
 
-      def initialize(sequel_db, table_prefix: "swarm", skip_migrations: false)
+      def initialize(sequel_db, skip_migrations: false)
         @sequel_db = sequel_db
-        @table_prefix = table_prefix
         migrate! unless skip_migrations
       end
 
@@ -34,14 +34,14 @@ module Swarm
         ::Sequel.extension :migration
 
         migration_folder = Swarm::Sequel.root.join("lib", "swarm", "sequel", "migrations")
-        options = { table: "#{@table_prefix}_schema_info" }
+        options = { table: "#{TABLE_PREFIX}_schema_info" }
         options.merge!(target: version.to_i) if version
 
         ::Sequel::Migrator.run(sequel_db, migration_folder, options)
       end
 
       def table_name_for_type(type)
-        "#{@table_prefix}_#{TABLE_NAMES[type]}"
+        "#{TABLE_PREFIX}_#{base_name}"
       end
 
       def dataset_for_type(type)
@@ -93,7 +93,7 @@ module Swarm
 
       def truncate
         TABLE_NAMES.values.each do |table|
-          sequel_db["#{@table_prefix}_#{table}".to_sym].truncate
+          sequel_db["#{TABLE_PREFIX}_#{table}".to_sym].truncate
         end
       end
     end
