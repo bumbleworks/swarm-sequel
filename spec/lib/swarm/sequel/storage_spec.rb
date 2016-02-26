@@ -58,6 +58,89 @@ RSpec.describe Swarm::Sequel::Storage do
     end
   end
 
+  describe "#dataset_for_type" do
+    it "returns a dataset by looking up the table for the given type" do
+      allow(subject).to receive(:table_name_for_type).with("Puppy").
+        and_return("a_table_name")
+      allow(sequel_db).to receive(:[]).with(:a_table_name).and_return(:the_dataset)
+      expect(subject.dataset_for_type("Puppy")).to eq(:the_dataset)
+    end
+  end
+
+  context "with fake data" do
+    let(:dataset_double) { double }
+    before(:each) do
+      allow(subject).to receive(:dataset_for_type).with("Puppy").
+        and_return(dataset_double)
+    end
+
+    describe "#load_associations" do
+      it "looks up associated records using given foreign key" do
+        allow(dataset_double).to receive(:where).with(:pound_id => "123").
+          and_return(:all_the_pound_puppies)
+        expect(subject.load_associations(
+          "puppies", owner: double(:id => "123"), type: "Aminal::Puppy", foreign_key: :pound_id)
+        ).to eq(:all_the_pound_puppies)
+      end
+
+      it "defaults foreign key to association_key_for_type if missing" do
+        allow(dataset_double).to receive(:where).with(:puppy_id => "123").
+          and_return(:all_the_pound_puppies)
+        expect(subject.load_associations(
+          "puppies", owner: double(:id => "123"), type: "Aminal::Puppy")
+        ).to eq(:all_the_pound_puppies)
+      end
+    end
+
+    describe "#ids_for_type" do
+      it "returns array of ids in DB for given type" do
+        allow(dataset_double).to receive(:select_map).with(:id).
+          and_return(:the_ids)
+        expect(subject.ids_for_type("Puppy")).to eq(:the_ids)
+      end
+    end
+
+    describe "#all_of_type" do
+      it "returns all records in DB for given type" do
+        allow(dataset_double).to receive(:all).
+          and_return(:everything)
+        expect(subject.all_of_type("Puppy")).to eq(:everything)
+      end
+
+      it "returns only specific (non-sub-type) records if requested" do
+        allow(dataset_double).to receive(:where).with(:type => "Puppy").
+          and_return(:most_everything)
+        expect(subject.all_of_type("Puppy", subtypes: false)).to eq(:most_everything)
+      end
+    end
+
+    describe "#[]" do
+      it "returns record at key" do
+        allow(dataset_double).to receive(:where).with(:id => "15").
+          and_return(double(:first => :a_pup))
+        expect(subject["Puppy:15"]).to eq(:a_pup)
+      end
+    end
+
+    describe "#[]=" do
+      it "creates record with given values" do
+        allow(dataset_double).to receive(:where).with(:id => "15").
+          and_return([])
+        expect(subject).to receive(:create_record).
+          with("Puppy", { foo: "bar", id: "15" })
+        subject["Puppy:15"] = { foo: "bar" }
+      end
+
+      it "updates existing record with given values" do
+        allow(dataset_double).to receive(:where).with(:id => "15").
+          and_return([:a_record])
+        expect(subject).to receive(:update_record).
+          with("Puppy", "15", { foo: "bar", id: "15" })
+        subject["Puppy:15"] = { foo: "bar" }
+      end
+    end
+  end
+
   context "with real data" do
     before(:each) do
       Timecop.freeze
