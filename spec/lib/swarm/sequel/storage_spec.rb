@@ -43,6 +43,21 @@ RSpec.describe Swarm::Sequel::Storage do
     end
   end
 
+  describe "#table_name_for_type" do
+    it "returns table name from type mapping" do
+      expect(subject.table_name_for_type("ProcessDefinition")).to eq("swarm_process_definitions")
+      expect(subject.table_name_for_type("Process")).to eq("swarm_processes")
+      expect(subject.table_name_for_type("Expression")).to eq("swarm_expressions")
+      expect(subject.table_name_for_type("StoredWorkitem")).to eq("swarm_stored_workitems")
+    end
+
+    it "raises an exception if type not supported" do
+      expect {
+        subject.table_name_for_type("JustMadeThisUp")
+      }.to raise_error(described_class::UnsupportedTypeError)
+    end
+  end
+
   context "with real data" do
     before(:each) do
       Timecop.freeze

@@ -4,6 +4,8 @@ require "swarm"
 module Swarm
   module Sequel
     class Storage
+      class UnsupportedTypeError < StandardError; end
+
       TABLE_PREFIX = "swarm"
       TABLE_NAMES = {
         "ProcessDefinition" => "process_definitions",
@@ -41,6 +43,8 @@ module Swarm
       end
 
       def table_name_for_type(type)
+        base_name = TABLE_NAMES[type]
+        raise UnsupportedTypeError unless base_name
         "#{TABLE_PREFIX}_#{base_name}"
       end
 
