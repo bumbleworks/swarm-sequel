@@ -39,7 +39,7 @@ RSpec.describe Swarm::Sequel::Storage do
 
   describe "#association_key_for_type" do
     it "returns tokenized type with _id appended" do
-      expect(subject.association_key_for_type("PartyKnuckles")).to eq("party_knuckles_id")
+      expect(subject.association_key_for_type("PartyKnuckles")).to eq(:party_knuckles_id)
     end
   end
 

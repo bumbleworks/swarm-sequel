@@ -21,7 +21,7 @@ module Swarm
       end
 
       def association_key_for_type(type)
-        "#{Swarm::Support.tokenize(type)}_id"
+        "#{Swarm::Support.tokenize(type)}_id".to_sym
       end
 
       def load_associations(association_name, owner:, type:, foreign_key: nil)
