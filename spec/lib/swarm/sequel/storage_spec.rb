@@ -74,12 +74,22 @@ RSpec.describe Swarm::Sequel::Storage do
         and_return(dataset_double)
     end
 
+    describe "#add_association" do
+      it "assigns foreign key of associated to owner's id" do
+        allow(dataset_double).to receive(:where).with(:id => "15").
+          and_return([:a_record])
+        expect(subject).to receive(:update_record).
+          with(:a_record, { foo: "bar", id: "15" })
+        subject["Puppy:15"] = { foo: "bar" }
+      end
+    end
+
     describe "#load_associations" do
       it "looks up associated records using given foreign key" do
         allow(dataset_double).to receive(:where).with(:pound_id => "123").
           and_return(:all_the_pound_puppies)
         expect(subject.load_associations(
-          "puppies", owner: double(:id => "123"), type: "Aminal::Puppy", foreign_key: :pound_id)
+          "puppies", owner: double(:id => "123"), class_name: "Aminal::Puppy", foreign_key: :pound_id)
         ).to eq(:all_the_pound_puppies)
       end
 
@@ -87,7 +97,7 @@ RSpec.describe Swarm::Sequel::Storage do
         allow(dataset_double).to receive(:where).with(:puppy_id => "123").
           and_return(:all_the_pound_puppies)
         expect(subject.load_associations(
-          "puppies", owner: double(:id => "123"), type: "Aminal::Puppy")
+          "puppies", owner: double(:id => "123"), class_name: "Aminal::Puppy")
         ).to eq(:all_the_pound_puppies)
       end
     end
@@ -135,7 +145,7 @@ RSpec.describe Swarm::Sequel::Storage do
         allow(dataset_double).to receive(:where).with(:id => "15").
           and_return([:a_record])
         expect(subject).to receive(:update_record).
-          with("Puppy", "15", { foo: "bar", id: "15" })
+          with(:a_record, { foo: "bar", id: "15" })
         subject["Puppy:15"] = { foo: "bar" }
       end
     end
@@ -169,12 +179,25 @@ RSpec.describe Swarm::Sequel::Storage do
       subject.migrate!(version: 0)
     end
 
+    describe "#add_association" do
+      it "sets foreign key on associated record to owner id" do
+        subject.add_association(
+          "processes",
+          sequel_db[:swarm_processes].where(id: 4).first,
+          owner: double(Swarm::ProcessDefinition, id: "5"),
+          class_name: "Swarm::Process",
+          foreign_key: :process_definition_id
+        )
+        expect(sequel_db[:swarm_processes].where(id: 4).first[:process_definition_id]).to eq("5")
+      end
+    end
+
     describe "#load_associations" do
       it "returns all associated objects with given relationship" do
         expect(subject.load_associations(
           "processes",
           owner: double(Swarm::ProcessDefinition, id: "1"),
-          type: "Swarm::Process",
+          class_name: "Swarm::Process",
           foreign_key: :process_definition_id
         ).all).to eq(sequel_db[:swarm_processes].all)
       end

@@ -22,12 +22,22 @@ module Swarm
         migrate! unless skip_migrations
       end
 
+      def uses_collection_indices?
+        false
+      end
+
       def association_key_for_type(type)
         "#{Swarm::Support.tokenize(type)}_id".to_sym
       end
 
-      def load_associations(association_name, owner:, type:, foreign_key: nil)
-        type = type.split("::").last
+      def add_association(association_name, associated, owner:, class_name:, foreign_key: nil)
+        type = class_name.split("::").last
+        foreign_key ||= association_key_for_type(type)
+        update_record(associated, foreign_key => owner.id)
+      end
+
+      def load_associations(association_name, owner:, class_name:, foreign_key: nil)
+        type = class_name.split("::").last
         foreign_key ||= association_key_for_type(type)
         dataset_for_type(type).where(foreign_key => owner.id)
       end
@@ -73,21 +83,22 @@ module Swarm
         table, id = key.split(":")
         existing_record = dataset_for_type(table).where(:id => id).first
         if existing_record
-          update_record(table, id, values.merge(:id => id))
+          update_record(existing_record, values.merge(:id => id))
         else
           create_record(table, values.merge(:id => id))
         end
       end
 
       def create_record(table, values)
+        require "pry"; binding.pry
         dataset_for_type(table).insert(values)
       end
 
-      def update_record(table, id, values)
-        model = Swarm::Support.constantize("Swarm::#{table}")
-        columns = model.columns
-        clear = Hash[columns.zip([nil])]
-        dataset_for_type(table).where(:id => id).update(clear.merge(values))
+      def update_record(record, values)
+        type, id = record.values_at(:type, :id)
+        model = Swarm::Support.constantize("Swarm::#{type}")
+        new_values = record.merge(values)
+        dataset_for_type(model.storage_type).where(:id => id).update(new_values)
       end
 
       def delete(key)
